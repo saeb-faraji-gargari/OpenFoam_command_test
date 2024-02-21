@@ -1,0 +1,250 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      nut;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+
+#include        "include/initialConditions"   // to call "x_0" and "y_0", "x1" and "x2" and  ... and "h1" and  ... 
+
+
+dimensions      [0 2 -1 0 0 0 0];
+
+internalField   uniform 0;
+
+boundaryField
+{
+    //- Set patchGroups for constraint patches
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    front
+    {
+        
+		type            cyclic;
+		
+		/*type            calculated;
+        value           uniform 0;*/
+    }
+	
+	Back
+    {
+        
+		type            cyclic;
+		
+		/*type            calculated;
+        value           uniform 0;*/
+    }
+
+    inlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    outlet
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    ground
+    {
+        /*type            nutkWallFunction;
+        value           uniform 0;*/
+		
+		type            nutkRoughWallFunction;
+              
+        value           $internalField;   //uniform 5e-07;				
+		Cs              uniform 0.5;
+		
+		Ks              #codeStream
+                  
+	   {
+		codeInclude
+		#{       
+			#include "fvCFD.H"
+			#include <math.h>   ///////////
+			#include <cmath>    //////////
+		#};
+		codeOptions
+		#{
+			-I$(LIB_SRC)/finiteVolume/lnInclude \
+			-I$(LIB_SRC)/meshTools/lnInclude
+		#};
+		codeLibs
+		#{
+			-lmeshTools \
+			-lfiniteVolume
+		#};
+		code
+		#{
+			
+			
+			
+			const IOdictionary& d = static_cast<const IOdictionary&>
+			(
+				dict.parent().parent()
+			);
+			const fvMesh& mesh = refCast<const fvMesh>(d.db());
+			const label id = mesh.boundary().findPatchID("ground");
+			const fvPatch& patch = mesh.boundary()[id];
+			
+			scalarField Ks_fun(patch.size(), 0.);
+
+			
+			//vectorField U(patch.size(), vector(0, 0, 0));
+			
+			//const scalar  pi = constant::mathematical::pi;
+			//const scalar  U_0 = 2.; //maximum velocity
+			//const scalar  p_ctr = 8.; //patch center     
+			//const scalar  p_r = 8.; //patch radius
+			
+			double L1_band_front_beach = $x_front_beach;
+			double L1_band_front_foredune = $x_front_fordune;
+            double L1_band_top_foredune = $x_top;
+			double L1_band_back_foredune = $x_back;
+			
+            if (Pstream::master()) 
+			{			
+			std::ofstream write_L1_band;
+	        write_L1_band.open("write_L1_band", std::ofstream::out | std::ofstream::app);  
+	        write_L1_band.precision(20);
+	        write_L1_band <<  "L1_band_front_beach: " << L1_band_front_beach << "\n" << "L1_band_front_foredune: " <<  L1_band_front_foredune  << "\n" << "L1_band_top_foredune: " <<  L1_band_top_foredune  << "\n" << "L1_band_back_foredune: " <<  L1_band_back_foredune  << "\n";
+	        write_L1_band.close();
+			}
+			
+			
+			  forAll(Ks_fun, i)   // eqiuvalent to for (int i=0; patch.size()<i; i++)   
+			{
+				//const scalar y = patch.Cf()[i][1];
+				
+				//double aa1 = ((y+($z_0)) / ($z_0)) +10.;
+				
+				//const double y = patch.Cf()[i][1];
+				const double x = patch.Cf()[i][0];
+
+				
+				//double y_01 = -10;
+				//double y_elevation_from0 = y + (-y_01);
+				//double y_elevation_from0 = y + (-1*$y_0);
+
+								
+				//double aa1 = 12.+ y;   //( ($z_0+ y) / ($z_0))+10.;    ;
+
+
+				//double u_x =  log(aa1));
+				
+				//double aa =log(10.1);
+				
+				//double aa2 =log(aa1);
+				
+				// U[i] = vector((($u_star) / ($k_van_karman))* (log((y+($z_0)) / ($z_0))), 0., 0.);   // vector(($u_star/$k_van_karman)*log((y+$z_0)/$z_0), 0., 0.);  // vector (20, 0 ,0);   
+
+                // U[i] = vector((($u_star) / ($k_van_karman) )*($a*fabs((pow(y,3))))+($b*(pow(y,2))), 0., 0.);
+
+				// U[i] = vector(2, 0., 0.);
+				
+
+
+				//double Ks_fun_sand = 0.05;
+				//double Ks_fun_Marram_grass = 0.24;
+				//double Ks_fun_Marram_grass_and_sand = 0.19;
+				
+				//double Ks_fun1 = 0.00001;
+				
+				double Ks_fun1;
+								
+				if (x <= $x_front_beach)  {
+
+
+				Ks_fun1=$Ks_fun_sand;
+
+			    }
+				
+				else if ((x > $x_front_beach) && (x <= $x_front_fordune))   /* foredune front slop  */ {
+				
+				//scalar u_x = ((u_star1) / (k_van_karman1))* (log((y+(z_01)) / (z_01)));
+                
+				Ks_fun1=(((x-$x_front_beach)/($x_front_fordune-$x_front_beach))*($Ks_fun_Marram_grass-$Ks_fun_sand))+$Ks_fun_sand;
+				
+			    }
+				
+				else if ((x > $x_front_fordune) && (x <= $x_top))   /* top of foredune  */ {
+				
+				//scalar u_x = ((u_star1) / (k_van_karman1))* (log((y+(z_01)) / (z_01)));
+                
+				Ks_fun1=$Ks_fun_Marram_grass;
+
+			    }
+				
+				else if ((x > $x_top) && (x <= $x_back))   /* foredune back slop   */ {
+				
+				//scalar u_x = ((u_star1) / (k_van_karman1))* (log((y+(z_01)) / (z_01)));
+                
+				Ks_fun1=$Ks_fun_Marram_grass-(((x-$x_top)/($x_back-$x_top))*($Ks_fun_Marram_grass-$Ks_fun_Marram_grass_and_sand));
+
+			    }
+
+				else  /* Lee of foredune  */ {
+					
+					Ks_fun1=$Ks_fun_Marram_grass_and_sand;
+					
+				}
+				
+					
+				std::ofstream write_x_roughness;
+	            write_x_roughness.open("write_x_roughness", std::ofstream::out | std::ofstream::app);  
+	            write_x_roughness.precision(20);
+	            write_x_roughness << x << "	" << Ks_fun1 << "\n";
+	            write_x_roughness.close();
+				
+				
+				/*if (Pstream::master()) 
+				/{
+					
+				std::ofstream write_x_roughness;
+	            write_x_roughness.open("write_x_roughness", std::ofstream::out | std::ofstream::app);  
+	            write_x_roughness.precision(20);
+	            write_x_roughness << x << "	" << Ks_fun1 << "\n";
+	            write_x_roughness.close();
+				
+				}*/
+				 
+				 Ks_fun[i] = Ks_fun1;
+			}
+			
+			//U.writeEntry("", os);  // Error
+			
+			writeEntry(os, "", Ks_fun);
+		#};
+	   };
+    }
+		
+		
+		
+
+    upperPatch
+    {
+        type            calculated;
+        value           uniform 0;
+    }
+
+    /*motorBikeGroup
+    {
+        type            nutkWallFunction;
+        value           uniform 0;
+    }*/
+}
+
+
+// ************************************************************************* //

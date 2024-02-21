@@ -1,0 +1,169 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      blockMeshDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+convertToMeters 1;
+
+
+
+#include        "../0/include/initialConditions"   // to call "x_v0_domain" "y_v0_domain" and "x_v2_domain" "y_v2_domain" and "y_end_domain" and "z_0_domain" "z_end_domain"
+
+
+
+//x_0_initial  $x_0_initial;    // The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..."
+//y_0_initial  $y_0_initial;    // The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..."
+
+x_0    $x_v0_domain;  // x v0 and v4
+x_end  $x_v1_domain;  // x v1 and v5
+y_0    $y_v0_domain;   
+
+//y_v1   $y_v1_domain;   //y_v1   #calc"$y_v1_domain-$y_0_initial";  // y v1 and v5
+y_end  $y_end_domain;  //y_end  #calc"$y_end_domain-$y_0_initial"; // y v2 and v6
+z_0    $z_0_domain;   // z initial
+z_end  $z_end_domain; // z end 
+
+
+/*x_0    #calc"$x_0_domain+$X_box_added";
+x_end  #calc"$x_end_domain-$Y_box_added";
+y_0    $y_0_domain;
+y_end  $y_end_domain;
+z_0    #calc"$z_0_domain+$Z_box_added";
+z_end  #calc"$z_end_domain-$Z_box_added";*/
+
+/*x_0    #calc"$x_0_domain-$X_box_added";
+x_end  #calc"$x_end_domain+$Y_box_added";
+y_0    $y_0_domain;
+y_end  $y_end_domain;
+z_0    #calc"$z_0_domain-$Z_box_added";
+z_end  #calc"$z_end_domain+$Z_box_added";*/
+
+
+vertices
+(
+    
+name v0	   ($x_0 $y_0 $z_0)                                  // 0 node 
+name v1    ($x_end $y_0 $z_0)   //($x_end $y_v1 $z_0)                                // 1 node
+name v2    ($x_end $y_end $z_0)                              // 2 node
+name v3    ($x_0 $y_end $z_0)                                // 3 node
+name v4    ($x_0 $y_0 $z_end)                                  // 4 node 
+name v5    ($x_end $y_0 $z_end)    //($x_end $y_v1 $z_end)                                // 5 node
+name v6	   ($x_end $y_end $z_end)                              // 6 node
+name v7    ($x_0 $y_end $z_end)                                // 7 node
+	
+	
+);
+
+blocks
+(
+    
+	hex (v0 v1 v2 v3 v4 v5 v6 v7) (20 20 20) simpleGrading (1 1 1) 
+	
+);
+
+boundary
+(
+    front
+    {
+	
+		type            cyclic;
+        neighbourPatch  Back;
+		faces
+        (
+            (v0 v1 v2 v3)
+            
+        );
+		
+    }
+	
+	
+	Back
+	{
+		
+		type            cyclic;
+        neighbourPatch  front;
+		faces
+        (
+            (v4 v7 v6 v5)
+        );
+		
+        /*type patch;
+        faces
+        (
+            (v14 v15 v16 v17)
+            (v15 v18 v19 v16)
+			(v18 v20 v21 v19)
+			(v20 v22 v23 v21)
+			(v22 v24 v25 v23)
+			(v24 v26 v27 v25)
+        );*/
+    }
+	
+    inlet
+    {
+        type patch;
+        faces
+        (
+            (v0 v3 v7 v4)
+        );
+    }
+    outlet
+    {
+        type patch;
+        faces
+        (
+            (v2 v1 v5 v6)   
+        );
+    }
+	
+    /*ground
+    {
+        type wall;
+        faces
+        (
+            (v0 v1 v15 v14)
+			(v1 v4 v18 v15)
+			(v4 v6 v20 v18)
+			(v6 v8 v22 v20)
+			(v8 v10 v24 v22)
+			(v10 v12 v26 v24)
+        );
+    }*/
+	
+	
+    upperPatch     // in involves the lowerWall. But lowerWall is under ground and it is out of domain
+    {
+        type patch;
+        faces
+        (
+            (v2 v6 v7 v3)
+			
+			(v0 v4 v5 v1)   // lowerWall to avoid Error and having a box in blockMesh it is needed
+			
+        );
+    }
+	
+	
+	/*lowerWall
+    {
+        type wall;
+        faces
+        (
+            (v0 v4 v5 v1)
+        );
+    }*/
+	
+);
+
+// ************************************************************************* //

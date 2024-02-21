@@ -1,0 +1,110 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+flowVelocity         (20 0 0);
+pressure             0;
+turbulentKE          0.24;
+turbulentOmega       1.78;
+
+
+
+//++++++++++++++++++++++++++++++++++++ Coefficients for inlet velocity profile ++++++++++++++++++++++++++++++++++++++
+
+u_star 0.85;
+k_van_karman 0.42;
+z_0 0.0005;
+//++++++++++++++++++++++++++++++++++++ End: Coefficients for inlet velocity profile ++++++++++++++++++++++++++++++++++
+
+//+++++++++++++++++++++++++++++++++++++ Geometry properties (blockMeshDict) +++++++++++++++++++++++++++++++++++++++++
+
+
+
+x_v0_domain       -50;
+y_v0_domain       -20;   //-9.7;   //0.3;
+x_v1_domain       240;
+y_v1_domain       -20;   //-5.64;   //4.36;
+y_end_domain      100;
+z_0_domain          0;    //-50;   //0;
+z_end_domain      100;    //50;    //100;
+
+
+
+x_front_beach   50;
+x_front_fordune  75;
+x_top    125;
+x_back   150;
+
+
+
+
+
+//+++++++++++++++++++++++++++++++++++++ End: Geometry properties (blockMeshDict) +++++++++++++++++++++++++++++++++++++++++
+
+teta_wind_velocity_degree   0 ;
+
+
+/*x_test #codeStream
+            {
+   
+                codeInclude
+                #{
+                #include "pointField.H"
+				
+				#include <fstream>
+
+                #};
+
+                code
+                   #{
+
+                         double xi;
+						 double yi;
+						 
+	                 if (Pstream::master()) 
+			            {			
+	
+							std::ifstream read_profile; 
+							read_profile.open("profile_ground.txt");
+	
+							if(!read_profile.is_open())
+							{
+								cout << "The file profile.txt cannot be read";
+								
+						    }
+				
+							read_profile.precision(20);
+
+							read_profile >> xi ;
+	
+							os << xi << endl;
+
+							read_profile.close();
+
+						}
+
+                    #};
+            }*/
+
+
+//x_0_initial -10;    // The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..." 
+//y_0_initial -10;    // The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..." 
+
+
+
+
+
+//+++++++++++++++++++++++++++++++++++++ roughness properties (nut) +++++++++++++++++++++++++++++++++++++++++++++
+
+Ks_fun_sand  0.05;
+Ks_fun_Marram_grass  0.24;
+Ks_fun_Marram_grass_and_sand  0.19;
+
+//+++++++++++++++++++++++++++++++++++++ End: roughness properties (nut) +++++++++++++++++++++++++++++++++++++++++
+
+
+// ************************************************************************* //

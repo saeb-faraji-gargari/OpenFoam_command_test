@@ -1,0 +1,278 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  10
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include        "include/initialConditions"  // it is to call y_0 and the other files
+
+dimensions      [0 1 -1 0 0 0 0];
+
+internalField   uniform $flowVelocity;
+
+
+//#include        "../../system/blockMeshDict" // it is to call y_0  // this is only when run in parallel for serial run use #include        "../system/blockMeshDict" 
+
+//x_0_initial      The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..."
+//y_0_initial    $y_0_initial;   //  The intial location for geometry to avoid from the erro of "FOAM FATAL ERROR: bad set size ..."
+
+//y_0   #calc"$y_v0_domain-$y_0_initial";  // yo is the initial hight for inlet
+y_0   $y_v0_domain;
+
+//u_star 0.85;
+//k_van_karman 0.42;
+//z_0 0.0005;
+
+
+
+
+boundaryField
+{
+    //- Set patchGroups for constraint patches
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    //#include "include/fixedInlet"
+
+    outlet
+    {
+        type            inletOutlet;
+        inletValue      uniform (0 0 0);
+        value           $internalField;
+    }
+
+    ground
+    {
+        /*type            fixedValue;
+        value           $internalField;*/
+		
+		type               noSlip;  // slip;
+    }
+
+    /*motorBikeGroup
+    {
+        type            noSlip;
+    }*/
+
+    #include "include/frontBackUpperPatches"
+	
+	
+inlet
+    {
+        type            fixedValue;
+        value           #codeStream
+	{
+		codeInclude
+		#{       
+			#include "fvCFD.H"
+			#include <math.h>   ///////////
+			#include <cmath>    //////////
+		#};
+		codeOptions
+		#{
+			-I$(LIB_SRC)/finiteVolume/lnInclude \
+			-I$(LIB_SRC)/meshTools/lnInclude
+		#};
+		codeLibs
+		#{
+			-lmeshTools \
+			-lfiniteVolume
+		#};
+		code
+		#{
+			
+			
+			
+			const IOdictionary& d = static_cast<const IOdictionary&>
+			(
+				dict.parent().parent()
+			);
+			const fvMesh& mesh = refCast<const fvMesh>(d.db());
+			const label id = mesh.boundary().findPatchID("inlet");
+			const fvPatch& patch = mesh.boundary()[id];
+			vectorField U(patch.size(), vector(0, 0, 0));
+			//const scalar  pi = constant::mathematical::pi;
+			//const scalar  U_0 = 2.; //maximum velocity
+			//const scalar  p_ctr = 8.; //patch center     
+			//const scalar  p_r = 8.; //patch radius
+			
+			
+			const scalar  PI = constant::mathematical::pi;
+
+			
+			
+			forAll(U, i)	//equivalent to for (int i=0; patch.size()<i; i++)
+			{
+				//const scalar y = patch.Cf()[i][1];
+				
+				//double aa1 = ((y+($z_0)) / ($z_0)) +10.;
+				
+				const double y = patch.Cf()[i][1];
+				
+				//double y_01 = -10;
+				//double y_elevation_from0 = y + (-y_01);
+				double y_elevation_from0 = y + (-1*$y_0);
+
+								
+				//double aa1 = 12.+ y;   //( ($z_0+ y) / ($z_0))+10.;    ;
+
+
+				//double u_x =  log(aa1));
+				
+				//double aa =log(10.1);
+				
+				//double aa2 =log(aa1);
+				
+				// U[i] = vector((($u_star) / ($k_van_karman))* (log((y+($z_0)) / ($z_0))), 0., 0.);   // vector(($u_star/$k_van_karman)*log((y+$z_0)/$z_0), 0., 0.);  // vector (20, 0 ,0);   
+
+                // U[i] = vector((($u_star) / ($k_van_karman) )*($a*fabs((pow(y,3))))+($b*(pow(y,2))), 0., 0.);
+
+				// U[i] = vector(2, 0., 0.);
+				
+				std::ofstream write_y;
+	            write_y.open("write_y_inlet_result_elevation_from0", std::ofstream::out | std::ofstream::app);  
+	            write_y.precision(20);
+	            write_y << y_elevation_from0  << "\n";
+	            write_y.close();
+				
+								
+				/*if (y < 10) {
+
+
+                double taylor_series_x =(y/z_01);
+				
+				//scalar u_x = ((u_star1) / (k_van_karman1))* ((taylor_series_x)-(pow(taylor_series_x,2.)/2.)+(pow(taylor_series_x,3)/3.));
+                
+				double u_x=0;
+
+			    }
+			    else {
+				
+				//scalar u_x = ((u_star1) / (k_van_karman1))* (log((y+(z_01)) / (z_01)));
+                
+				double u_x=10;
+
+			    }*/
+				
+				double teta_wind_velocity_radian = ($teta_wind_velocity_degree*PI)/180;
+				
+				 scalar u_x = (($u_star) / ($k_van_karman))* (log((y_elevation_from0+($z_0)) / ($z_0))) * cos(teta_wind_velocity_radian);
+				 scalar u_z = (($u_star) / ($k_van_karman))* (log((y_elevation_from0+($z_0)) / ($z_0))) * sin(teta_wind_velocity_radian);
+				 
+				 U[i] = vector(u_x, 0., u_z);
+			}
+			
+			//U.writeEntry("", os);  // Error
+			
+			writeEntry(os, "", U);
+		#};
+	};
+    }
+	
+	
+	front
+{
+	
+	type            cyclic;
+	
+ 
+	/*type            fixedValue;
+    value           #codeStream
+	{
+		codeInclude
+		#{       
+			#include "fvCFD.H"
+			#include <math.h>   ///////////
+			#include <cmath>    //////////
+		#};
+		codeOptions
+		#{
+			-I$(LIB_SRC)/finiteVolume/lnInclude \
+			-I$(LIB_SRC)/meshTools/lnInclude
+		#};
+		codeLibs
+		#{
+			-lmeshTools \
+			-lfiniteVolume
+		#};
+		code
+		#{
+				
+			const IOdictionary& d = static_cast<const IOdictionary&>
+			(
+				dict.parent().parent()
+			);
+			const fvMesh& mesh = refCast<const fvMesh>(d.db());
+			const label id = mesh.boundary().findPatchID("front");
+			const fvPatch& patch = mesh.boundary()[id];
+			vectorField U(patch.size(), vector(0, 0, 0));
+			
+			const scalar  PI = constant::mathematical::pi;
+			
+			forAll(U, i)	//equivalent to for (int i=0; patch.size()<i; i++)
+			{
+								
+				const double y = patch.Cf()[i][1];
+				
+				
+				double y_elevation_from0 = y + (-1*$y_0);
+
+				
+				/*std::ofstream write_y;
+	            write_y.open("write_y_inlet_result_elevation_from0", std::ofstream::out | std::ofstream::app);  
+	            write_y.precision(20);
+	            write_y << y_elevation_from0  << "\n";
+	            write_y.close();*\
+				
+				double teta_wind_velocity_radian = ($teta_wind_velocity_degree*PI)/180;
+
+                 scalar u_x = (($u_star) / ($k_van_karman))* (log((y_elevation_from0+($z_0)) / ($z_0))) * cos(teta_wind_velocity_radian);
+				 scalar u_z = (($u_star) / ($k_van_karman))* (log((y_elevation_from0+($z_0)) / ($z_0))) * sin(teta_wind_velocity_radian);
+				 
+				 U[i] = vector(u_x, 0., u_z);
+			}
+			
+			//U.writeEntry("", os);  // Error
+			
+			writeEntry(os, "", U);
+		#};
+	};*/
+	
+	
+}
+
+Back
+{
+	
+	type            cyclic;
+	
+    //type slip;
+	
+	/* type            inletOutlet;
+     inletValue      uniform (0 0 0);
+     value           $internalField;*/
+}
+	
+	
+	/*inlet
+{
+    type  fixedValue;
+    value $internalField;
+}*/
+	
+	
+}
+
+
+
+
+// ************************************************************************* //

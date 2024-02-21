@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "shear_stress.C": "cpp",
+        "wallShearStress.C": "cpp"
+    }
+
+    "editor.renderControlCharacters": true
+
+    "editor.renderWhitespace": "all"
+    
+}

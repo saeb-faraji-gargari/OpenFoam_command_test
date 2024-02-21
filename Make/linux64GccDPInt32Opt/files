@@ -1,0 +1,12 @@
+
+SOURCE += OpenFOAM_programming_command.C
+
+# shear_stress.C
+
+# shear_stress_play_test.C   # in baraye test hast baraye play code
+
+# wallShearStress.C
+
+# shear_stress_test_backup.C
+
+EXE = $(FOAM_USER_APPBIN)/OpenFOAM_programming_command
